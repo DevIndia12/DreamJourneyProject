@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import HomePage from './HomePage';
 import { auth, db } from './firebase';
 import CommunityChat from './CommunityChat';
@@ -325,6 +326,7 @@ export default function App() {
                 </form>
               </div>
             </div>
+            <SpeedInsights />
           </div>
         </div>
       )}
