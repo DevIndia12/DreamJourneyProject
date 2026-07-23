@@ -238,7 +238,7 @@ export default function HomePage({ currentScreen, setCurrentScreen, onNavigateTo
               ✉️ dreamjourneyproject@gmail.com
             </a>
             <div className="w-full sm:w-auto text-center bg-white/5 border border-white/10 px-4 py-2.5 rounded-xl text-slate-300 shadow-sm">
-              📞 +91 XXXXX XXXXX
+              📞 +91 87082 22530
             </div>
           </div>
         </div>
