@@ -17,7 +17,7 @@ export default function CommunityChat({ onBackToHome }) {
 
         {/* Title & Badge */}
         <span className="bg-blue-500/20 text-blue-400 text-xs font-bold px-3.5 py-1 rounded-full uppercase tracking-wider mb-3">
-          Under Construction
+          Feature Under Development
         </span>
         
         <h2 className="text-2xl font-black text-white mb-2">
@@ -25,7 +25,7 @@ export default function CommunityChat({ onBackToHome }) {
         </h2>
         
         <p className="text-slate-400 text-sm leading-relaxed mb-8">
-          Ye feature abhi dev mode mein hai! Hum ek badhiya chat experience ready kar rahe hain, bohot jald live hoga.
+          We are currently building a seamless real-time chat experience for travelers. Stay tuned, launching very soon!
         </p>
 
         {/* Action Button */}
@@ -33,7 +33,7 @@ export default function CommunityChat({ onBackToHome }) {
           onClick={onBackToHome}
           className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold text-sm transition-all duration-200 shadow-lg active:scale-95"
         >
-          ⬅️ Back to Home
+          ⬅️ Return to Home
         </button>
 
       </div>
