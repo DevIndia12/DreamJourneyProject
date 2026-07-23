@@ -316,7 +316,7 @@ export default function ContributionPage({ onBackToHome, currentUserData }) {
             <button 
               type="button"
               onClick={() => {
-                const upiUrl = 'upi://pay?pa=${officialUPI}&pn=DreamJourney&am=${currentFinalAmount}&cu=INR';
+                const upiUrl = `upi://pay?pa=${officialUPI}&pn=DreamJourney&am=${currentFinalAmount}&cu=INR`;
                 window.location.href = upiUrl;
               }}
               className="w-full flex items-center justify-center gap-3 bg-sky-500 hover:bg-sky-600 text-white py-3.5 rounded-xl font-bold transition-all px-4 cursor-pointer shadow-lg shadow-sky-500/20"

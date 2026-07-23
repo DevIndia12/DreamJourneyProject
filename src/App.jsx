@@ -8,20 +8,20 @@ import ContributionPage from './ContributionPage';
 import UserProfile from './UserProfile';
 import AdminDashboard from './AdminDeshboard';
 import RaferralPage from './RaferralPage';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signInWithPopup, 
   GoogleAuthProvider,
   onAuthStateChanged,
-  signOut,
   sendEmailVerification 
 } from 'firebase/auth';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('login');
   const [authMode, setAuthMode] = useState('login');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [currentUserData, setCurrentUserData] = useState(null);
 
   // Form Control States
@@ -31,28 +31,47 @@ export default function App() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
 
+  // Synchronize Firestore User Document
+  const syncUserToFirestore = async (user, additionalData = {}) => {
+    if (!user) return;
+    try {
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef);
+
+      if (!userSnap.exists()) {
+        await setDoc(userRef, {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName || `${additionalData.firstName || ''} ${additionalData.lastName || ''}`.trim(),
+          createdAt: new Date(),
+          referralCount: 0
+        });
+      }
+    } catch (err) {
+      console.error("Firestore User Sync Error:", err);
+    }
+  };
+
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setCurrentUserData(user);
         
         // 🛡️ SECURITY LAYER: Admin Check
         if (user.email === "devkagra2809@gmail.com") { 
           setCurrentScreen('admin'); 
-        } else if (currentScreen === 'login') {
-          setCurrentScreen('home');  
+        } else {
+          setCurrentScreen((prev) => (prev === 'login' ? 'home' : prev));
         }
-        
-        setIsLoading(false); 
       } else {
         setCurrentUserData(null);
         setCurrentScreen('login');
-        setIsLoading(false); 
       }
+      setIsLoading(false); 
     });
 
     return () => unsubscribe();
-  }, [currentScreen]);
+  }, []);
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
@@ -62,12 +81,13 @@ export default function App() {
       
       const result = await signInWithPopup(auth, provider);
       if (result?.user) {
+        await syncUserToFirestore(result.user);
         setCurrentUserData(result.user);
         setCurrentScreen('home');
       }
     } catch (error) {
       console.error("Google Error:", error.message);
-      alert("Google login process cancel hua ya network slow hai.");
+      alert("Google login failed ya cancel hua: " + error.message);
     } finally {
       setIsLoading(false);
     }
@@ -83,12 +103,12 @@ export default function App() {
       }
 
       if (password !== confirmPassword) {
-        alert("❌ Passwords match nahi ho rahe hain! Kripya sahi se check karein.");
+        alert("❌ Passwords match nahi ho rahe hain!");
         return;
       }
 
       if (password.length < 6) {
-        alert("⚠️ Security ke liye password kam se kam 6 characters ka hona chahiye!");
+        alert("⚠️ Password minimum 6 characters ka hona chahiye!");
         return;
       }
     }
@@ -97,9 +117,12 @@ export default function App() {
     try {
       if (authMode === 'signup') {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        await sendEmailVerification(userCredential.user);
+        const user = userCredential.user;
         
-        alert("📩 Account successfully ban gaya hai! Aapki email par ek verification link bheja gaya hai. Link par click karne ke baad hi account active mana jayega.");
+        await syncUserToFirestore(user, { firstName, lastName });
+        await sendEmailVerification(user);
+        
+        alert("📩 Account successfully ban gaya! Email par verification link bhej diya gaya hai.");
         
         setConfirmPassword('');
         setEmail('');
@@ -109,11 +132,13 @@ export default function App() {
         setAuthMode('login'); 
       } else {
         await signInWithEmailAndPassword(auth, email, password);
-        alert("Login Successful!");
+        alert("✅ Login Successful!");
       }
     } catch (error) {
       if (error.code === 'auth/email-already-in-use') {
-        alert("🚨 Yeh email address pehle se register hai!");
+        alert("🚨 Yeh email address pehle se registered hai!");
+      } else if (error.code === 'auth/invalid-credential') {
+        alert("❌ Invalid Email or Password!");
       } else {
         alert('🚨 Error: ' + error.message);
       }
@@ -124,9 +149,9 @@ export default function App() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white">
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white p-4">
         <div className="w-10 h-10 border-4 border-t-transparent border-blue-500 rounded-full animate-spin"></div>
-        <p className="text-xs text-slate-500 mt-3 tracking-wide">Syncing Session Grid...</p>
+        <p className="text-xs text-slate-400 mt-3 tracking-wide">Syncing Session Grid...</p>
       </div>
     );
   }
@@ -181,15 +206,15 @@ export default function App() {
       )}
 
       {currentScreen === 'journey-request' && (
-  <JourneyRequestPage
-    currentUser={currentUserData}
-    onBackToHome={() => setCurrentScreen('home')}
-    onGoToPayment={() => setCurrentScreen('payment')} 
-  />
-)}
+        <JourneyRequestPage
+          currentUser={currentUserData}
+          onBackToHome={() => setCurrentScreen('home')}
+          onGoToPayment={() => setCurrentScreen('payment')} 
+        />
+      )}
 
       {currentScreen === 'login' && (
-        <div className="min-h-screen bg-white flex items-center justify-center p-0 font-sans antialiased">
+        <div className="min-h-screen bg-white flex items-center justify-center font-sans antialiased">
           <style>{`
             @keyframes floatPlane {
               0%, 100% { transform: translateY(0px); }
@@ -198,38 +223,42 @@ export default function App() {
             .live-floating-plane { animation: floatPlane 3s ease-in-out infinite !important; }
           `}</style>
           
-          <div className="w-full min-h-screen grid md:grid-cols-12 overflow-hidden bg-white">
-            <div className="md:col-span-6 bg-[#1c7df2] p-12 flex flex-col justify-between text-white relative">
+          <div className="w-full min-h-screen grid grid-cols-1 md:grid-cols-12 overflow-x-hidden bg-white">
+            {/* Left Header / Branding Panel */}
+            <div className="md:col-span-6 bg-[#1c7df2] p-6 md:p-12 flex flex-col justify-between text-white relative">
               <div className="flex items-center gap-3">
                 <svg viewBox="0 0 24 24" className="w-6 h-6 text-white transform -rotate-45" fill="currentColor">
                   <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L14 19v-5.5L21 16z" />
                 </svg>
-                <span className="text-xl font-extrabold tracking-wide">Dream Journey Project</span>
+                <span className="text-lg md:text-xl font-extrabold tracking-wide">Dream Journey Project</span>
               </div>
 
-              <div className="my-auto flex items-center justify-center relative py-16">
-                <div className="absolute w-80 h-80 border border-white/10 rounded-full pointer-events-none"></div>
-                <div className="w-36 h-36 select-none live-floating-plane filter drop-shadow-2xl">
+              <div className="my-8 md:my-auto flex items-center justify-center relative py-8 md:py-16">
+                <div className="absolute w-48 h-48 md:w-80 md:h-80 border border-white/10 rounded-full pointer-events-none"></div>
+                <div className="w-24 h-24 md:w-36 md:h-36 select-none live-floating-plane filter drop-shadow-2xl">
                   <svg viewBox="0 0 24 24" className="w-full h-full text-white" fill="currentColor">
                     <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L14 19v-5.5L21 16z" />
                   </svg>
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <h1 className="text-4xl font-black tracking-tight">Explore The Skies</h1>
-                <p className="text-white/80 text-sm font-medium">Join our exclusive community to make dream journeys reality.</p>
+              <div className="space-y-2 md:space-y-3">
+                <h1 className="text-2xl md:text-4xl font-black tracking-tight">Explore The Skies</h1>
+                <p className="text-white/80 text-xs md:text-sm font-medium">Join our exclusive community to make dream journeys reality.</p>
               </div>
             </div>
 
-            <div className="md:col-span-6 px-10 py-12 md:px-20 flex flex-col justify-center bg-white">
-              <div className="flex justify-end items-center gap-8 mb-8 max-w-sm mx-auto w-full border-b border-slate-100 pb-2">
+            {/* Right Auth Form Panel */}
+            <div className="md:col-span-6 px-6 py-8 md:px-20 flex flex-col justify-center bg-white">
+              <div className="flex justify-end items-center gap-8 mb-6 max-w-sm mx-auto w-full border-b border-slate-100 pb-2">
                 <button
                   type="button"
                   onClick={() => setAuthMode('login')}
-                  className={`pb-1 text-sm font-bold tracking-wide transition border-b-2 ${authMode === 'login'
+                  className={`pb-1 text-sm font-bold tracking-wide transition border-b-2 ${
+                    authMode === 'login'
                       ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-slate-400'}`}
+                      : 'border-transparent text-slate-400'
+                  }`}
                 >
                   Login
                 </button>
@@ -237,43 +266,73 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setAuthMode('signup')}
-                  className={`pb-1 text-sm font-bold tracking-wide transition border-b-2 ${authMode === 'signup'
+                  className={`pb-1 text-sm font-bold tracking-wide transition border-b-2 ${
+                    authMode === 'signup'
                       ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-slate-400'}`}
+                      : 'border-transparent text-slate-400'
+                  }`}
                 >
                   Signup
                 </button>
               </div>
 
-              <div className="max-w-md mx-auto w-full space-y-6">
-                <h2 className="text-3xl font-black text-slate-800">{authMode === 'signup' ? 'Create Account 👋' : 'Welcome Back 👋'}</h2>
+              <div className="max-w-md mx-auto w-full space-y-5">
+                <h2 className="text-2xl md:text-3xl font-black text-slate-800">
+                  {authMode === 'signup' ? 'Create Account 👋' : 'Welcome Back 👋'}
+                </h2>
 
-                <form className="space-y-5" onSubmit={handleAuthSubmit}>
+                <form className="space-y-4" onSubmit={handleAuthSubmit}>
                   {authMode === 'signup' && (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
                         <label className="text-xs font-bold text-slate-400">First Name</label>
-                        <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} required className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 bg-white text-slate-800" />
+                        <input 
+                          type="text" 
+                          value={firstName} 
+                          onChange={(e) => setFirstName(e.target.value)} 
+                          required 
+                          className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-500 bg-white text-slate-800" 
+                        />
                       </div>
-                      <div className="space-y-1.5">
+                      <div className="space-y-1">
                         <label className="text-xs font-bold text-slate-400">Last Name</label>
-                        <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} required className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 bg-white text-slate-800" />
+                        <input 
+                          type="text" 
+                          value={lastName} 
+                          onChange={(e) => setLastName(e.target.value)} 
+                          required 
+                          className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-500 bg-white text-slate-800" 
+                        />
                       </div>
                     </div>
                   )}
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-400">Email Address</label>
-                    <input type="email" placeholder="email@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 bg-white text-slate-800" />
+                    <input 
+                      type="email" 
+                      placeholder="email@example.com" 
+                      value={email} 
+                      onChange={(e) => setEmail(e.target.value)} 
+                      required 
+                      className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500 bg-white text-slate-800" 
+                    />
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-400">Password</label>
-                    <input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 bg-white text-slate-800" />
+                    <input 
+                      type="password" 
+                      placeholder="••••••••" 
+                      value={password} 
+                      onChange={(e) => setPassword(e.target.value)} 
+                      required 
+                      className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500 bg-white text-slate-800" 
+                    />
                   </div>
 
                   {authMode === 'signup' && (
-                    <div className="space-y-1.5">
+                    <div className="space-y-1">
                       <div className="flex justify-between items-center">
                         <label className="text-xs font-bold text-slate-400">Confirm Password</label>
                         {confirmPassword && (
@@ -292,7 +351,7 @@ export default function App() {
                           value={confirmPassword} 
                           onChange={(e) => setConfirmPassword(e.target.value)} 
                           required 
-                          className={`w-full border rounded-xl px-4 py-3 text-sm outline-none bg-white text-slate-800 pr-10 transition-all duration-200 ${
+                          className={`w-full border rounded-xl px-4 py-2.5 text-sm outline-none bg-white text-slate-800 pr-10 transition-all duration-200 ${
                             confirmPassword 
                               ? (password === confirmPassword ? 'border-emerald-500 focus:border-emerald-600 ring-1 ring-emerald-100' : 'border-rose-400 focus:border-rose-500 ring-1 ring-rose-100') 
                               : 'border-slate-200 focus:border-blue-500'
@@ -305,17 +364,24 @@ export default function App() {
                     </div>
                   )}
 
-                  <button type="submit" className="w-full bg-[#0091ff] hover:bg-blue-600 text-white py-3.5 rounded-xl text-sm font-bold shadow-md">
+                  <button 
+                    type="submit" 
+                    className="w-full bg-[#0091ff] hover:bg-blue-600 text-white py-3 rounded-xl text-sm font-bold shadow-md transition active:scale-[0.98]"
+                  >
                     {authMode === 'signup' ? 'REGISTER ACCOUNT' : 'VERIFY ACCOUNT'}
                   </button>
 
-                  <div className="relative flex py-2 items-center">
+                  <div className="relative flex py-1 items-center">
                     <div className="flex-grow border-t border-slate-100"></div>
                     <span className="flex-shrink mx-3 text-slate-300 text-[10px] font-bold tracking-widest">OR</span>
                     <div className="flex-grow border-t border-slate-100"></div>
                   </div>
 
-                  <button type="button" onClick={handleGoogleSignIn} className="w-full flex items-center justify-center gap-2.5 border border-slate-200 text-slate-500 py-3 rounded-xl text-sm font-bold hover:bg-slate-50 transition shadow-sm bg-white">
+                  <button 
+                    type="button" 
+                    onClick={handleGoogleSignIn} 
+                    className="w-full flex items-center justify-center gap-2.5 border border-slate-200 text-slate-600 py-2.5 rounded-xl text-sm font-bold hover:bg-slate-50 transition shadow-sm bg-white active:scale-[0.98]"
+                  >
                     <svg className="w-4 h-4" viewBox="0 0 24 24">
                       <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.53-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-8.72z" />
                       <path fill="#34A853" d="M12 24c3.24 0 5.97-1.08 7.96-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.08 1.16-3.15 0-5.81-2.13-6.76-5.01H1.33v3.15C3.31 22.18 7.39 24 12 24z" />
