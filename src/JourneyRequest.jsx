@@ -23,11 +23,11 @@ const indianLocations = [
   { city: "Lucknow", region: "Uttar Pradesh" }
 ];
 
-export default function JourneyRequestPage({ onBackToHome, currentUser }) {
-  // Yahan se useNavigate hata diya hai taaki error na aaye!
+// ✅ 1. Props mein onGoToPayment add kar diya
+export default function JourneyRequestPage({ onBackToHome, onGoToPayment, currentUser }) {
 
   // Form Basic States
-  const [fullName, setFullName] = useState(currentUser?.displayName || "");
+  const [fullName, setFullName] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
   const [purpose, setPurpose] = useState(""); 
   const [story, setStory] = useState("");
@@ -63,6 +63,15 @@ export default function JourneyRequestPage({ onBackToHome, currentUser }) {
     item.city.toLowerCase().includes(dreamDestination.toLowerCase())
   );
 
+  // Helper function to handle Payment navigation safely
+  const goToPaymentPage = () => {
+    if (typeof onGoToPayment === 'function') {
+      onGoToPayment(); // Parent component state update
+    } else {
+      window.location.href = '/payment'; // Direct fallback route
+    }
+  };
+
   // Handle Form Submit with EmailJS Automation 🚀
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -92,20 +101,15 @@ export default function JourneyRequestPage({ onBackToHome, currentUser }) {
         'CNEsChsbB-Xu5bFB5'      
       );
 
-      // Submit hone par safe navigation
-      if (onBackToHome) {
-        onBackToHome();
-      } else {
-        window.location.href = '/';
-      }
+      // ✅ Submit hone ke baad direct Payment page par bhejein
+      goToPaymentPage();
     }
     catch (emailError) {
       console.warn("Email service failover active:", emailError);
-      if (onBackToHome) {
-        onBackToHome();
-      } else {
-        window.location.href = '/';
-      }
+      // ✅ Failover par bhi Payment page par hi bhejein
+      goToPaymentPage();
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -118,21 +122,22 @@ export default function JourneyRequestPage({ onBackToHome, currentUser }) {
 
       <div className="max-w-4xl w-full mx-auto relative z-10">
         
-       {/* Modern Back Button */}
-<button 
-  type="button"
-  onClick={() => {
-    if (typeof onBackToHome === 'function') {
-      onBackToHome(); // Agar parent component handle kar raha hai
-    } else {
-      window.location.href = '/'; // Fallback to direct home path
-    }
-  }}
-  className="group mb-8 inline-flex items-center gap-2 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl text-xs font-bold transition duration-200 border border-white/10 shadow-sm cursor-pointer"
->
-  <span className="transform group-hover:-translate-x-1 transition-transform">←</span>
-  <span>Back to Homepage</span>
-</button>
+        {/* Modern Back Button */}
+        <button 
+          type="button"
+          onClick={() => {
+            if (typeof onBackToHome === 'function') {
+              onBackToHome();
+            } else {
+              window.location.href = '/';
+            }
+          }}
+          className="group mb-8 inline-flex items-center gap-2 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl text-xs font-bold transition duration-200 border border-white/10 shadow-sm cursor-pointer"
+        >
+          <span className="transform group-hover:-translate-x-1 transition-transform">←</span>
+          <span>Back to Homepage</span>
+        </button>
+
         {/* Hero Header Card */}
         <div className="bg-gradient-to-r from-blue-600/80 to-indigo-600/80 backdrop-blur-xl border border-white/20 rounded-[28px] p-6 sm:p-8 shadow-xl flex flex-col md:flex-row items-center gap-6 mb-6 relative overflow-hidden">
           <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/15 rounded-2xl flex items-center justify-center border border-white/20 shadow-inner flex-shrink-0">
@@ -335,7 +340,7 @@ export default function JourneyRequestPage({ onBackToHome, currentUser }) {
                 </>
               ) : (
                 <>
-                  <span>SUBMIT YOUR REQUEST </span>
+                  <span>PROCEED TO PAYMENT </span>
                   <svg 
                     viewBox="0 0 24 24" 
                     className="w-4 h-4 transform group-hover/btn:translate-x-1 transition-transform duration-200" 

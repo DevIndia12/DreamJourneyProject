@@ -181,11 +181,12 @@ export default function App() {
       )}
 
       {currentScreen === 'journey-request' && (
-        <JourneyRequestPage 
-          currentUser={currentUserData} 
-          onBackToHome={() => setCurrentScreen('home')} 
-        />
-      )}
+  <JourneyRequestPage
+    currentUser={currentUserData}
+    onBackToHome={() => setCurrentScreen('home')}
+    onGoToPayment={() => setCurrentScreen('payment')} 
+  />
+)}
 
       {currentScreen === 'login' && (
         <div className="min-h-screen bg-white flex items-center justify-center p-0 font-sans antialiased">
