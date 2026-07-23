@@ -27,7 +27,7 @@ export default function JourneyRequestPage({ onBackToHome, currentUser }) {
   // Yahan se useNavigate hata diya hai taaki error na aaye!
 
   // Form Basic States
-  const [fullName, setFullName] = useState(currentUser?.displayName || "FILER Gaming");
+  const [fullName, setFullName] = useState(currentUser?.displayName || "");
   const [mobileNumber, setMobileNumber] = useState("");
   const [purpose, setPurpose] = useState(""); 
   const [story, setStory] = useState("");
