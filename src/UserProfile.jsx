@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { auth, db } from './firebase';
 import { updateProfile } from 'firebase/auth';
 import { doc, updateDoc, collection, query, where, onSnapshot } from 'firebase/firestore';
+import DTCoin from './DTCoin'; // 🪙 Custom DT Coin Import
 
 export default function UserProfile({ currentUserData, onBack, onBackToHome }) {
   // --- 1. Basic Identity States ---
@@ -65,7 +66,7 @@ export default function UserProfile({ currentUserData, onBack, onBackToHome }) {
     return () => unsubscribe();
   }, []);
 
-  // 🏅 REQUIREMENT 2: DYNAMIC TRAVEL BADGE MATRIX
+  // 🏅 DYNAMIC TRAVEL BADGE MATRIX
   const getBadgeDetails = (total) => {
     if (total >= 100) return { title: "Dream Builder 🥇", styles: "bg-amber-500/10 text-amber-500 border-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.1)]" };
     if (total >= 50) return { title: "Explorer 🥈", styles: "bg-slate-500/10 text-slate-400 border-slate-500/20" };
@@ -110,7 +111,7 @@ export default function UserProfile({ currentUserData, onBack, onBackToHome }) {
     }
   };
 
-  // 🔒 REQUIREMENT 4: SESSION SHUTDOWN OPERATION
+  // 🔒 SESSION SHUTDOWN OPERATION
   const handleSignOut = async () => {
     if (window.confirm("Are you sure you want to log out of this node?")) {
       await auth.signOut();
@@ -152,7 +153,7 @@ export default function UserProfile({ currentUserData, onBack, onBackToHome }) {
         {/* ================= LEFT GRID COLUMN: IDENTITY HUD & BADGES ================= */}
         <div className="space-y-6">
           
-          {/* REQUIREMENT 1: VISUAL AVATAR HUB */}
+          {/* VISUAL AVATAR HUB */}
           <div className="bg-[#0b1e36] border border-white/5 rounded-3xl p-6 shadow-[0_20px_40px_rgba(0,0,0,0.3)] flex flex-col items-center text-center space-y-5 relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/5 rounded-full blur-2xl pointer-events-none"></div>
             
@@ -165,12 +166,12 @@ export default function UserProfile({ currentUserData, onBack, onBackToHome }) {
               <p className="text-xs text-slate-400 font-mono">{auth.currentUser?.email || 'authenticated_node@domain.com'}</p>
             </div>
             
-            {/* REQUIREMENT 2: LEVEL BADGE CONTAINER */}
-            <div className={`w-full border py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${currentBadge.styles}`}>
+            {/* LEVEL BADGE CONTAINER */}
+            <div className={'w-full border py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ' + currentBadge.styles}>
               {currentBadge.title}
             </div>
 
-            {/* REQUIREMENT 3: LIVE TRAVEL BIO BOX */}
+            {/* LIVE TRAVEL BIO BOX */}
             <div className="w-full bg-[#071325] border border-white/5 px-4 py-3.5 rounded-2xl text-left">
               <span className="text-[9px] font-black text-sky-400 uppercase tracking-wider block mb-1">Travel Manifesto</span>
               <p className="text-xs italic text-slate-300 leading-relaxed font-medium">
@@ -179,19 +180,27 @@ export default function UserProfile({ currentUserData, onBack, onBackToHome }) {
             </div>
           </div>
 
-          {/* REQUIREMENT 2: REAL-TIME CONTRIBUTION MONITOR HUD */}
-          <div className="bg-[#0b1e36] border border-white/5 rounded-3xl p-5 shadow-xl grid grid-cols-2 gap-4 relative overflow-hidden">
-            <div className="bg-[#071325] border border-white/5 p-4 rounded-2xl text-center">
-              <span className="text-[9px] text-slate-400 font-black uppercase tracking-wider block">Wallet Contributed</span>
-              <span className="text-2xl font-black text-[#0ea5e9] block mt-1 tracking-tight">₹{myTotalContributed}</span>
+          {/* 🪙 REPLACED HUD: REAL-TIME DT COINS & STREAK MONITOR */}
+          <div className="bg-[#0b1e36] border border-amber-500/20 rounded-3xl p-5 shadow-xl grid grid-cols-2 gap-4 relative overflow-hidden">
+            <div className="bg-[#071325] border border-amber-500/10 p-4 rounded-2xl text-center flex flex-col items-center justify-center">
+              <span className="text-[9px] text-amber-400/80 font-black uppercase tracking-wider block mb-1">DT Coins Balance</span>
+              <div className="flex items-center gap-2 mt-1">
+                <DTCoin className="w-6 h-6 animate-pulse" />
+                <span className="text-2xl font-black text-amber-400 tracking-tight">
+                  {currentUserData?.coins || 0}
+                </span>
+              </div>
             </div>
-            <div className="bg-[#071325] border border-white/5 p-4 rounded-2xl text-center">
-              <span className="text-[9px] text-slate-400 font-black uppercase tracking-wider block">Synced Logs</span>
-              <span className="text-2xl font-black text-white block mt-1 tracking-tight">{myHistory.length}</span>
+
+            <div className="bg-[#071325] border border-amber-500/10 p-4 rounded-2xl text-center flex flex-col items-center justify-center">
+              <span className="text-[9px] text-slate-400 font-black uppercase tracking-wider block mb-1">Daily Streak</span>
+              <span className="text-lg font-black text-white mt-1 tracking-tight bg-amber-500/20 px-3 py-1 rounded-full border border-amber-500/30 text-amber-300">
+                Day {currentUserData?.streakCount || 1} / 7
+              </span>
             </div>
           </div>
 
-          {/* REQUIREMENT 4: DANGEROUS SYSTEM CONTROLS LAYER */}
+          {/* DANGEROUS SYSTEM CONTROLS LAYER */}
           <button 
             type="button"
             onClick={handleSignOut}
@@ -220,7 +229,7 @@ export default function UserProfile({ currentUserData, onBack, onBackToHome }) {
 
             <form onSubmit={handleUpdateProfile} className="space-y-5">
               
-              {/* REQUIREMENT 1: IDENTITY INPUT FIELDS */}
+              {/* IDENTITY INPUT FIELDS */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Public Display Name</label>
@@ -232,7 +241,7 @@ export default function UserProfile({ currentUserData, onBack, onBackToHome }) {
                 </div>
               </div>
 
-              {/* REQUIREMENT 3: TRAVEL ASPIRATION INPUT FIELDS */}
+              {/* TRAVEL ASPIRATION INPUT FIELDS */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Dream Travel Destination ✈️</label>
@@ -259,7 +268,6 @@ export default function UserProfile({ currentUserData, onBack, onBackToHome }) {
                   ← Back to Wallet
                 </button>
 
-                {/* 🏠 NAYA PREMIUM GREEN HOME BUTTON */}
                 <button 
                   type="button" 
                   onClick={onBackToHome} 
@@ -272,7 +280,7 @@ export default function UserProfile({ currentUserData, onBack, onBackToHome }) {
             </form>
           </div>
 
-          {/* REQUIREMENT 2: VERIFICATION TRANSACTIONS HISTORY LOG */}
+          {/* VERIFICATION TRANSACTIONS HISTORY LOG */}
           <div className="bg-[#0b1e36] border border-white/5 rounded-3xl p-6 shadow-xl space-y-4">
             <h4 className="text-xs font-black text-white uppercase tracking-widest border-b border-white/5 pb-3 flex items-center gap-2 text-sky-400">
               📜 Personal Ledger Audit History Logs
