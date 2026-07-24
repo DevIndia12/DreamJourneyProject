@@ -8,7 +8,8 @@ import ContributionPage from './ContributionPage';
 import UserProfile from './UserProfile';
 import AdminDashboard from './AdminDeshboard';
 import RaferralPage from './RaferralPage';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import DTCoin from './DTCoin'; // 🪙 Custom Coin Import
+import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
@@ -17,6 +18,17 @@ import {
   onAuthStateChanged,
   sendEmailVerification 
 } from 'firebase/auth';
+
+// 🪙 7 Days Total = Exactly 50 Coins Distribution
+const STREAK_REWARDS = {
+  1: 2,
+  2: 3,
+  3: 5,
+  4: 8,
+  5: 10,
+  6: 10,
+  7: 12
+};
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('login');
@@ -31,24 +43,63 @@ export default function App() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
 
-  // Synchronize Firestore User Document
+  // 🔄 Synchronize Firestore User & Daily Streak Coins System
   const syncUserToFirestore = async (user, additionalData = {}) => {
     if (!user) return;
     try {
       const userRef = doc(db, "users", user.uid);
       const userSnap = await getDoc(userRef);
 
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0]; // "YYYY-MM-DD"
+
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
+
       if (!userSnap.exists()) {
+        // Naye User ke liye: Day 1 Reward = 2 DT Coins
         await setDoc(userRef, {
           uid: user.uid,
           email: user.email,
           displayName: user.displayName || `${additionalData.firstName || ''} ${additionalData.lastName || ''}`.trim(),
           createdAt: new Date(),
-          referralCount: 0
+          referralCount: 0,
+          coins: 2, 
+          streakCount: 1,
+          lastLoginDate: todayStr
         });
+        alert("🎉 Welcome! Day 1 Bonus: Aapko 2 DT Coins mile hain!");
+      } else {
+        const userData = userSnap.data();
+        const lastLogin = userData.lastLoginDate;
+
+        // Agar aaj pehle login nahi kiya hai
+        if (lastLogin !== todayStr) {
+          let currentStreak = userData.streakCount || 0;
+
+          // Streak Continuation Logic
+          if (lastLogin === yesterdayStr) {
+            currentStreak = currentStreak >= 7 ? 1 : currentStreak + 1;
+          } else {
+            // Day Miss hone par Streak Reset -> Day 1
+            currentStreak = 1;
+          }
+
+          const rewardCoins = STREAK_REWARDS[currentStreak] || 2;
+          const totalCoins = (userData.coins || 0) + rewardCoins;
+
+          await updateDoc(userRef, {
+            coins: totalCoins,
+            streakCount: currentStreak,
+            lastLoginDate: todayStr
+          });
+
+          alert('🔥 Day ${currentStreak} Streak! Aapko +${rewardCoins} DT Coins mile hain!');
+        }
       }
     } catch (err) {
-      console.error("Firestore User Sync Error:", err);
+      console.error("Firestore Streak Sync Error:", err);
     }
   };
 
@@ -56,6 +107,7 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setCurrentUserData(user);
+        await syncUserToFirestore(user);
         
         // 🛡️ SECURITY LAYER: Admin Check
         if (user.email === "devkagra2809@gmail.com") { 
@@ -131,7 +183,8 @@ export default function App() {
         setLastName('');
         setAuthMode('login'); 
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        await syncUserToFirestore(userCredential.user);
         alert("✅ Login Successful!");
       }
     } catch (error) {
