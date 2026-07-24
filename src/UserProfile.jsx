@@ -180,7 +180,7 @@ export default function UserProfile({ currentUserData, onBack, onBackToHome }) {
             </div>
           </div>
 
-          {/* 🪙 REPLACED HUD: REAL-TIME DT COINS & STREAK MONITOR */}
+          {/* 🪙 REAL-TIME DT COINS & STREAK MONITOR */}
           <div className="bg-[#0b1e36] border border-amber-500/20 rounded-3xl p-5 shadow-xl grid grid-cols-2 gap-4 relative overflow-hidden">
             <div className="bg-[#071325] border border-amber-500/10 p-4 rounded-2xl text-center flex flex-col items-center justify-center">
               <span className="text-[9px] text-amber-400/80 font-black uppercase tracking-wider block mb-1">DT Coins Balance</span>
@@ -200,11 +200,54 @@ export default function UserProfile({ currentUserData, onBack, onBackToHome }) {
             </div>
           </div>
 
+          {/* 🎁 DAILY CLAIM BUTTON */}
+          <div className="mt-4 bg-[#071325] border border-amber-500/20 p-4 rounded-2xl flex items-center justify-between">
+            <div>
+              <h5 className="text-xs font-black text-amber-400 uppercase tracking-wide">Daily Streak Reward</h5>
+              <p className="text-[10px] text-slate-400">Claim your Day {currentUserData?.streakCount || 1} DT Coins</p>
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  const userRef = doc(db, "users", auth.currentUser.uid);
+                  const now = new Date().toISOString().split('T')[0];
+                  
+                  if (currentUserData?.lastLoginDate === now) {
+                    alert("⚠️ Aaj ka Reward pehle hi Claim ho chuka hai! Kal wapas aayein.");
+                    return;
+                  }
+
+                  const STREAK_REWARDS = { 1: 2, 2: 3, 3: 5, 4: 8, 5: 10, 6: 10, 7: 12 };
+                  let currentStreak = (currentUserData?.streakCount || 0) + 1;
+                  if (currentStreak > 7) currentStreak = 1;
+
+                  const rewardCoins = STREAK_REWARDS[currentStreak] || 2;
+                  const totalCoins = (currentUserData?.coins || 0) + rewardCoins;
+
+                  await updateDoc(userRef, {
+                    coins: totalCoins,
+                    streakCount: currentStreak,
+                    lastLoginDate: now
+                  });
+
+                  alert(`🎉 Success! Day ${currentStreak} Reward: +${rewardCoins} DT Coins Claim Ho Gaye!`);
+                } catch (err) {
+                  console.error(err);
+                  alert("❌ Claim karne mein error aaya.");
+                }
+              }}
+              className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs px-4 py-2 rounded-xl shadow-md transition active:scale-95 cursor-pointer"
+            >
+              🎁 Claim Reward
+            </button>
+          </div>
+
           {/* DANGEROUS SYSTEM CONTROLS LAYER */}
           <button 
             type="button"
             onClick={handleSignOut}
-            className="w-full bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/20 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-md flex items-center justify-center gap-2"
+            className="w-full bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/20 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
           >
             🛑 Terminal Session Logout
           </button>
@@ -260,18 +303,18 @@ export default function UserProfile({ currentUserData, onBack, onBackToHome }) {
 
               {/* ACTION COMMAND CONTROLS */}
               <div className="pt-2 flex flex-col sm:flex-row gap-4">
-                <button type="submit" disabled={isSaving} className="flex-grow bg-[#0ea5e9] hover:bg-[#0284c7] text-white py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg transition-all active:scale-[0.99] disabled:opacity-50">
+                <button type="submit" disabled={isSaving} className="flex-grow bg-[#0ea5e9] hover:bg-[#0284c7] text-white py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg transition-all active:scale-[0.99] disabled:opacity-50 cursor-pointer">
                   {isSaving ? 'Synchronizing Cloud Node...' : 'Save Component Parameters'}
                 </button>
                 
-                <button type="button" onClick={onBack} className="bg-[#071325] hover:bg-slate-800 text-slate-400 hover:text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-colors border border-white/5">
+                <button type="button" onClick={onBack} className="bg-[#071325] hover:bg-slate-800 text-slate-400 hover:text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-colors border border-white/5 cursor-pointer">
                   ← Back to Wallet
                 </button>
 
                 <button 
                   type="button" 
                   onClick={onBackToHome} 
-                  className="bg-emerald-500/10 hover:bg-emerald-600 text-emerald-400 hover:text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all border border-emerald-500/20 flex items-center justify-center gap-2"
+                  className="bg-emerald-500/10 hover:bg-emerald-600 text-emerald-400 hover:text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all border border-emerald-500/20 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   🏠 Go to Home
                 </button>

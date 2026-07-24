@@ -8,8 +8,8 @@ import ContributionPage from './ContributionPage';
 import UserProfile from './UserProfile';
 import AdminDashboard from './AdminDeshboard';
 import RaferralPage from './RaferralPage';
-import DTCoin from './DTCoin'; // 🪙 Custom Coin Import
-import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import DTCoin from './DTCoin'; 
+import { doc, setDoc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
@@ -69,7 +69,6 @@ export default function App() {
           streakCount: 1,
           lastLoginDate: todayStr
         });
-        alert("🎉 Welcome! Day 1 Bonus: Aapko 2 DT Coins mile hain!");
       } else {
         const userData = userSnap.data();
         const lastLogin = userData.lastLoginDate;
@@ -78,11 +77,9 @@ export default function App() {
         if (lastLogin !== todayStr) {
           let currentStreak = userData.streakCount || 0;
 
-          // Streak Continuation Logic
           if (lastLogin === yesterdayStr) {
             currentStreak = currentStreak >= 7 ? 1 : currentStreak + 1;
           } else {
-            // Day Miss hone par Streak Reset -> Day 1
             currentStreak = 1;
           }
 
@@ -94,8 +91,6 @@ export default function App() {
             streakCount: currentStreak,
             lastLoginDate: todayStr
           });
-
-          alert('🔥 Day ${currentStreak} Streak! Aapko +${rewardCoins} DT Coins mile hain!');
         }
       }
     } catch (err) {
@@ -104,12 +99,20 @@ export default function App() {
   };
 
   useEffect(() => {
+    let unsubscribeDoc = () => {};
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        setCurrentUserData(user);
+        // Real-time Firestore sync taaki Profile screen par Coins automatically update dikhein
+        const userRef = doc(db, "users", user.uid);
+        unsubscribeDoc = onSnapshot(userRef, (docSnap) => {
+          if (docSnap.exists()) {
+            setCurrentUserData({ uid: user.uid, email: user.email, ...docSnap.data() });
+          }
+        });
+
         await syncUserToFirestore(user);
         
-        // 🛡️ SECURITY LAYER: Admin Check
         if (user.email === "devkagra2809@gmail.com") { 
           setCurrentScreen('admin'); 
         } else {
@@ -122,7 +125,10 @@ export default function App() {
       setIsLoading(false); 
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      unsubscribeDoc();
+    };
   }, []);
 
   const handleGoogleSignIn = async () => {
